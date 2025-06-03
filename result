@@ -1,0 +1,205 @@
+**Schema (PostgreSQL v17)**
+
+    -- Таблица сотрудников
+    CREATE TABLE employees (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50),
+        department VARCHAR(50),
+        position VARCHAR(50),
+        hire_date DATE,
+        termination_date DATE,
+        experience_years INT,
+        performance_score NUMERIC(3,2) -- оценка от 0 до 10
+    );
+    
+    -- Таблица вакансий
+    CREATE TABLE vacancies (
+        id SERIAL PRIMARY KEY,
+        department VARCHAR(50),
+        position VARCHAR(50),
+        publish_date DATE,
+        hire_date DATE
+    );
+    
+    -- Вставка данных сотрудников (пример около 40 строк)
+    INSERT INTO employees (name, department, position, hire_date, termination_date, experience_years, performance_score) VALUES
+    ('Ivanov I.', 'IT', 'Junior Developer', '2023-12-15', NULL, 1, 6.5),
+    ('Petrov P.', 'IT', 'Senior Developer', '2020-07-10', NULL, 7, 9.1),
+    ('Sidorov S.', 'IT', 'Middle Developer', '2022-03-01', '2024-05-20', 3, 7.2),
+    ('Kuznetsov K.', 'IT', 'Junior Developer', '2024-01-05', NULL, 0, 5.8),
+    ('Smirnova A.', 'IT', 'HR Manager', '2019-09-12', NULL, 5, NULL),
+    ('Volkov V.', 'IT', 'Middle Developer', '2023-06-10', NULL, 4, 7.8),
+    ('Fedorov F.', 'IT', 'Senior Developer', '2021-10-01', NULL, 8, 8.9),
+    ('Nikolaev N.', 'IT', 'Junior Developer', '2024-02-15', NULL, 1, 6.1),
+    ('Makarova M.', 'IT', 'Middle Developer', '2022-08-20', '2024-03-15', 3, 7.0),
+    ('Orlov O.', 'IT', 'Junior Developer', '2024-03-10', NULL, 0, 5.5),
+    -- добавим еще 30 похожих строк с разными датами и опытом
+    ('Popov P.', 'IT', 'Senior Developer', '2018-05-12', NULL, 10, 9.3),
+    ('Novikov N.', 'IT', 'Middle Developer', '2021-12-01', NULL, 5, 7.7),
+    ('Lebedev L.', 'IT', 'Junior Developer', '2024-04-01', NULL, 0, 5.9),
+    ('Morozov M.', 'IT', 'Junior Developer', '2023-11-20', NULL, 1, 6.4),
+    ('Karpov K.', 'IT', 'Senior Developer', '2019-01-15', NULL, 9, 8.7),
+    ('Egorov E.', 'IT', 'Middle Developer', '2023-07-30', NULL, 4, 7.4),
+    ('Vinogradov V.', 'IT', 'Junior Developer', '2024-05-05', NULL, 0, 5.6),
+    ('Solovyov S.', 'IT', 'Middle Developer', '2022-02-28', '2024-01-10', 3, 7.1),
+    ('Kozlov K.', 'IT', 'Senior Developer', '2020-10-15', NULL, 8, 8.8),
+    ('Alekseev A.', 'IT', 'Junior Developer', '2024-06-01', NULL, 0, 6.0),
+    ('Zaitsev Z.', 'IT', 'Junior Developer', '2023-08-05', NULL, 1, 6.3),
+    ('Bogdanov B.', 'IT', 'Middle Developer', '2022-11-12', NULL, 3, 7.2),
+    ('Kiselev K.', 'IT', 'Senior Developer', '2019-03-20', '2024-04-30', 9, 8.5),
+    ('Denisov D.', 'IT', 'Middle Developer', '2023-09-10', NULL, 4, 7.6),
+    ('Filippov F.', 'IT', 'Junior Developer', '2024-07-15', NULL, 0, 5.7),
+    ('Grigoriev G.', 'IT', 'Junior Developer', '2024-08-01', NULL, 0, 5.9),
+    ('Nikitin N.', 'IT', 'Middle Developer', '2021-04-01', NULL, 5, 7.8),
+    ('Sorokin S.', 'IT', 'Senior Developer', '2017-12-15', NULL, 10, 9.2),
+    ('Pavlov P.', 'IT', 'Junior Developer', '2024-09-01', NULL, 0, 5.5),
+    ('Vinokurov V.', 'IT', 'Middle Developer', '2023-05-10', NULL, 4, 7.3);
+    
+    -- Вставка данных вакансий (пример около 10 строк)
+    INSERT INTO vacancies (department, position, publish_date, hire_date) VALUES
+    ('IT', 'Junior Developer', '2023-12-01', '2024-01-05'),
+    ('IT', 'Middle Developer', '2023-11-15', '2023-12-10'),
+    ('IT', 'Senior Developer', '2023-10-01', '2023-11-01'),
+    ('IT', 'Junior Developer', '2024-02-10', '2024-02-15'),
+    ('IT', 'Middle Developer', '2024-03-01', '2024-03-25'),
+    ('IT', 'Junior Developer', '2024-04-10', '2024-04-20'),
+    ('IT', 'Senior Developer', '2024-05-01', '2024-05-15'),
+    ('IT', 'Middle Developer', '2024-06-05', '2024-06-20'),
+    ('IT', 'Junior Developer', '2024-07-01', '2024-07-10'),
+    ('IT', 'Junior Developer', '2024-08-01', '2024-08-12');
+    
+
+---
+
+**Query #1**
+
+    WITH RECURSIVE
+    months AS (
+        SELECT DATE '2024-01-01' AS month_start
+        UNION ALL
+        SELECT (month_start + INTERVAL '1 month')::DATE
+        FROM months
+        WHERE month_start < DATE '2024-12-01'
+    ),
+    
+    active_employees AS (
+        SELECT
+            m.month_start,
+            COUNT(e.id) AS employees_count
+        FROM months m
+        LEFT JOIN employees e
+          ON e.hire_date <= m.month_start
+          AND (e.termination_date IS NULL OR e.termination_date >= m.month_start)
+        GROUP BY m.month_start
+    ),
+    
+    terminations AS (
+        SELECT
+            DATE_TRUNC('month', termination_date)::DATE AS term_month,
+            COUNT(id) AS term_count
+        FROM employees
+        WHERE termination_date BETWEEN '2024-01-01' AND '2024-12-31'
+        GROUP BY term_month
+    ),
+    
+    experience_distribution AS (
+        SELECT
+            m.month_start,
+            CASE
+                WHEN e.experience_years BETWEEN 0 AND 2 THEN '0-2'
+                WHEN e.experience_years BETWEEN 3 AND 5 THEN '3-5'
+                ELSE '6+'
+            END AS exp_group,
+            COUNT(e.id) AS count_by_exp
+        FROM months m
+        LEFT JOIN employees e
+          ON e.hire_date <= m.month_start
+          AND (e.termination_date IS NULL OR e.termination_date >= m.month_start)
+        GROUP BY m.month_start, exp_group
+    ),
+    
+    avg_hiring_time AS (
+        SELECT
+            DATE_TRUNC('month', publish_date)::DATE AS pub_month,
+            AVG(hire_date - publish_date) AS avg_days_to_hire
+        FROM vacancies
+        WHERE publish_date BETWEEN '2024-01-01' AND '2024-12-31'
+          AND hire_date IS NOT NULL
+        GROUP BY pub_month
+    ),
+    
+    performance_by_experience AS (
+        SELECT
+            m.month_start,
+            CASE
+                WHEN e.experience_years BETWEEN 0 AND 2 THEN '0-2'
+                WHEN e.experience_years BETWEEN 3 AND 5 THEN '3-5'
+                ELSE '6+'
+            END AS exp_group,
+            AVG(e.performance_score) AS avg_performance
+        FROM months m
+        LEFT JOIN employees e
+          ON e.hire_date <= m.month_start
+          AND (e.termination_date IS NULL OR e.termination_date >= m.month_start)
+        GROUP BY m.month_start, exp_group
+    )
+    
+    SELECT
+        m.month_start AS month,
+        COALESCE(t.term_count, 0) AS terminations,
+        COALESCE(a.employees_count, 0) AS active_employees,
+        CASE WHEN a.employees_count > 0 THEN ROUND(COALESCE(t.term_count, 0)::numeric / a.employees_count, 4) ELSE 0 END AS turnover_rate,
+        ed.exp_group,
+        ed.count_by_exp,
+        COALESCE(ah.avg_days_to_hire, 0) AS avg_days_to_hire,
+        COALESCE(pb.avg_performance, 0) AS avg_performance_score
+    FROM months m
+    LEFT JOIN terminations t ON t.term_month = m.month_start
+    LEFT JOIN active_employees a ON a.month_start = m.month_start
+    LEFT JOIN experience_distribution ed ON ed.month_start = m.month_start
+    LEFT JOIN avg_hiring_time ah ON ah.pub_month = m.month_start
+    LEFT JOIN performance_by_experience pb ON pb.month_start = m.month_start AND pb.exp_group = ed.exp_group
+    ORDER BY m.month_start, ed.exp_group;
+
+| month      | terminations | active_employees | turnover_rate | exp_group | count_by_exp | avg_days_to_hire    | avg_performance_score |
+| ---------- | ------------ | ---------------- | ------------- | --------- | ------------ | ------------------- | --------------------- |
+| 2024-01-01 | 1            | 21               | 0.0476        | 0-2       | 3            | 0                   | 6.4000000000000000    |
+| 2024-01-01 | 1            | 21               | 0.0476        | 3-5       | 11           | 0                   | 7.4100000000000000    |
+| 2024-01-01 | 1            | 21               | 0.0476        | 6+        | 7            | 0                   | 8.9285714285714286    |
+| 2024-02-01 | 0            | 21               | 0.0000        | 0-2       | 4            | 5.0000000000000000  | 6.2500000000000000    |
+| 2024-02-01 | 0            | 21               | 0.0000        | 3-5       | 10           | 5.0000000000000000  | 7.4444444444444444    |
+| 2024-02-01 | 0            | 21               | 0.0000        | 6+        | 7            | 5.0000000000000000  | 8.9285714285714286    |
+| 2024-03-01 | 1            | 22               | 0.0455        | 0-2       | 5            | 24.0000000000000000 | 6.2200000000000000    |
+| 2024-03-01 | 1            | 22               | 0.0455        | 3-5       | 10           | 24.0000000000000000 | 7.4444444444444444    |
+| 2024-03-01 | 1            | 22               | 0.0455        | 6+        | 7            | 24.0000000000000000 | 8.9285714285714286    |
+| 2024-04-01 | 1            | 23               | 0.0435        | 0-2       | 7            | 10.0000000000000000 | 6.0714285714285714    |
+| 2024-04-01 | 1            | 23               | 0.0435        | 3-5       | 9            | 10.0000000000000000 | 7.5000000000000000    |
+| 2024-04-01 | 1            | 23               | 0.0435        | 6+        | 7            | 10.0000000000000000 | 8.9285714285714286    |
+| 2024-05-01 | 1            | 22               | 0.0455        | 0-2       | 7            | 14.0000000000000000 | 6.0714285714285714    |
+| 2024-05-01 | 1            | 22               | 0.0455        | 3-5       | 9            | 14.0000000000000000 | 7.5000000000000000    |
+| 2024-05-01 | 1            | 22               | 0.0455        | 6+        | 6            | 14.0000000000000000 | 9.0000000000000000    |
+| 2024-06-01 | 0            | 23               | 0.0000        | 0-2       | 9            | 15.0000000000000000 | 6.0111111111111111    |
+| 2024-06-01 | 0            | 23               | 0.0000        | 3-5       | 8            | 15.0000000000000000 | 7.5428571428571429    |
+| 2024-06-01 | 0            | 23               | 0.0000        | 6+        | 6            | 15.0000000000000000 | 9.0000000000000000    |
+| 2024-07-01 | 0            | 23               | 0.0000        | 0-2       | 9            | 9.0000000000000000  | 6.0111111111111111    |
+| 2024-07-01 | 0            | 23               | 0.0000        | 3-5       | 8            | 9.0000000000000000  | 7.5428571428571429    |
+| 2024-07-01 | 0            | 23               | 0.0000        | 6+        | 6            | 9.0000000000000000  | 9.0000000000000000    |
+| 2024-08-01 | 0            | 25               | 0.0000        | 0-2       | 11           | 11.0000000000000000 | 5.9727272727272727    |
+| 2024-08-01 | 0            | 25               | 0.0000        | 3-5       | 8            | 11.0000000000000000 | 7.5428571428571429    |
+| 2024-08-01 | 0            | 25               | 0.0000        | 6+        | 6            | 11.0000000000000000 | 9.0000000000000000    |
+| 2024-09-01 | 0            | 26               | 0.0000        | 0-2       | 12           | 0                   | 5.9333333333333333    |
+| 2024-09-01 | 0            | 26               | 0.0000        | 3-5       | 8            | 0                   | 7.5428571428571429    |
+| 2024-09-01 | 0            | 26               | 0.0000        | 6+        | 6            | 0                   | 9.0000000000000000    |
+| 2024-10-01 | 0            | 26               | 0.0000        | 0-2       | 12           | 0                   | 5.9333333333333333    |
+| 2024-10-01 | 0            | 26               | 0.0000        | 3-5       | 8            | 0                   | 7.5428571428571429    |
+| 2024-10-01 | 0            | 26               | 0.0000        | 6+        | 6            | 0                   | 9.0000000000000000    |
+| 2024-11-01 | 0            | 26               | 0.0000        | 0-2       | 12           | 0                   | 5.9333333333333333    |
+| 2024-11-01 | 0            | 26               | 0.0000        | 3-5       | 8            | 0                   | 7.5428571428571429    |
+| 2024-11-01 | 0            | 26               | 0.0000        | 6+        | 6            | 0                   | 9.0000000000000000    |
+| 2024-12-01 | 0            | 26               | 0.0000        | 0-2       | 12           | 0                   | 5.9333333333333333    |
+| 2024-12-01 | 0            | 26               | 0.0000        | 3-5       | 8            | 0                   | 7.5428571428571429    |
+| 2024-12-01 | 0            | 26               | 0.0000        | 6+        | 6            | 0                   | 9.0000000000000000    |
+
+---
+
+[View on DB Fiddle](https://www.db-fiddle.com/)
